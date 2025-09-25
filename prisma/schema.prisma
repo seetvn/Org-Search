@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model organisations {
+  id           BigInt                   @id @default(autoincrement())
+  organisation String
+  location     String?
+  type         String?
+  route        String
+  created_at   DateTime?                @default(now()) @db.Timestamptz(6)
+  search_tsv   Unsupported("tsvector")? @default(dbgenerated("(((setweight(to_tsvector('simple'::regconfig, COALESCE(organisation, ''::text)), 'A'::\"char\") || setweight(to_tsvector('simple'::regconfig, COALESCE(location, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(type, ''::text)), 'C'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(route, ''::text)), 'C'::\"char\"))"))
+
+  @@unique([organisation, location])
+  @@index([location], map: "idx_orgs_location")
+  @@index([organisation(ops: raw("gin_trgm_ops"))], map: "idx_orgs_org_trgm", type: Gin)
+  @@index([search_tsv], map: "idx_orgs_search_tsv", type: Gin)
+  @@index([type], map: "idx_orgs_type")
+}
+
+model organisations_staging {
+  id           BigInt  @id @default(autoincrement())
+  organisation String?
+  location     String?
+  type         String?
+  route        String?
+}
